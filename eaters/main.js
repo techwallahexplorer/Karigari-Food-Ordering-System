@@ -1,4 +1,4 @@
-// Main JavaScript for JTBeats Website
+// Main JavaScript for Karigari Website
 
 // Cart state
 let cartItems = [];
