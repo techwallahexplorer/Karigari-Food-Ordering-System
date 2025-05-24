@@ -1,0 +1,17 @@
+# dependencies
+/node_modules
+package-lock.json
+
+# environment variables
+.env
+
+# Firebase service account
+serviceAccountKey.json
+
+# IDE files
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
