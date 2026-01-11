@@ -14,15 +14,25 @@ let db;
 let firebaseError = null;
 
 try {
-  if (admin.apps.length === 0) {
-    if (!process.env.SERVICE_ACCOUNT_KEY || !process.env.FIREBASE_DATABASE_URL) {
-      throw new Error('Firebase environment variables (SERVICE_ACCOUNT_KEY, FIREBASE_DATABASE_URL) are not set.');
+  if (admin.apps.length === 0) { // Prevent re-initializing
+    // Use environment variables on Vercel
+    if (process.env.VERCEL_ENV === 'production' || process.env.SERVICE_ACCOUNT_KEY) {
+      if (!process.env.SERVICE_ACCOUNT_KEY || !process.env.FIREBASE_DATABASE_URL) {
+        throw new Error('Firebase environment variables are not set for production.');
+      }
+      const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+    } else {
+      // Use local files for offline development
+      const serviceAccount = require('./serviceAccountKey.json');
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
+      });
     }
-    const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL
-    });
   }
   db = admin.database();
 } catch (error) {
