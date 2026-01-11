@@ -1,4 +1,5 @@
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const admin = require('firebase-admin');
 require('dotenv').config();
@@ -33,7 +34,7 @@ app.use(express.static('eaters'));
 
 // Add a route for the root path to serve index.html
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/eaters/index.html');
+  res.sendFile(path.join(__dirname, 'eaters', 'index.html'));
 });
 
 // Routes

@@ -2,14 +2,34 @@
   "version": 2,
   "builds": [
     {
-      "src": "./server.js",
+      "src": "server.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "eaters/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/server.js"
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/eaters/assets/$1"
+    },
+    {
+      "src": "/main.js",
+      "dest": "/eaters/main.js"
+    },
+    {
+      "src": "/style.css",
+      "dest": "/eaters/style.css"
+    },
+    {
+      "src": "/",
+      "dest": "server.js"
     }
   ]
 }
