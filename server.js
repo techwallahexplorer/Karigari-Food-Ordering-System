@@ -10,32 +10,33 @@ const app = express();
 // Initialize Firebase Admin
 // On Vercel, the service account key is stored as an environment variable.
 // Locally, it will fall back to the JSON file.
+let db;
+let firebaseError = null;
+
 try {
-  if (admin.apps.length === 0) { // Prevent re-initializing Firebase
-    if (process.env.SERVICE_ACCOUNT_KEY) {
-      const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DATABASE_URL
-      });
-    } else {
-      // This block is for local development
-      const serviceAccount = require('./serviceAccountKey.json');
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
-      });
+  if (admin.apps.length === 0) {
+    if (!process.env.SERVICE_ACCOUNT_KEY || !process.env.FIREBASE_DATABASE_URL) {
+      throw new Error('Firebase environment variables (SERVICE_ACCOUNT_KEY, FIREBASE_DATABASE_URL) are not set.');
     }
+    const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: process.env.FIREBASE_DATABASE_URL
+    });
   }
+  db = admin.database();
 } catch (error) {
-  console.error('Firebase initialization error:', error.message);
-  // If Firebase fails to initialize, respond to all requests with an error
-  app.use((req, res, next) => {
-    res.status(500).json({ error: 'Firebase initialization failed. Check server logs.' });
-  });
+  console.error('FATAL: Firebase initialization failed:', error.message);
+  firebaseError = error.message;
 }
 
-const db = admin.database();
+// Middleware to check for Firebase initialization errors on every request
+app.use((req, res, next) => {
+  if (firebaseError) {
+    return res.status(500).json({ error: 'Firebase initialization failed. Please check server logs.', details: firebaseError });
+  }
+  next();
+});
 
 // Middleware
 app.use(cors());
@@ -43,7 +44,15 @@ app.use(express.json());
 // Serve static files from the 'eaters' directory
 app.use(express.static('eaters'));
 
-// Add a route for the root path to serve index.html
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  if (firebaseError) {
+    return res.status(500).json({ status: 'error', message: 'Firebase connection failed' });
+  }
+  res.status(200).json({ status: 'ok', message: 'Server is running and Firebase is connected' });
+});
+
+// Serve index.html for the root path
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'eaters', 'index.html'));
 });
