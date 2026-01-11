@@ -10,17 +10,28 @@ const app = express();
 // Initialize Firebase Admin
 // On Vercel, the service account key is stored as an environment variable.
 // Locally, it will fall back to the JSON file.
-if (process.env.SERVICE_ACCOUNT_KEY) {
-  const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_DATABASE_URL
-  });
-} else {
-  const serviceAccount = require('./serviceAccountKey.json');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
+try {
+  if (admin.apps.length === 0) { // Prevent re-initializing Firebase
+    if (process.env.SERVICE_ACCOUNT_KEY) {
+      const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+    } else {
+      // This block is for local development
+      const serviceAccount = require('./serviceAccountKey.json');
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
+      });
+    }
+  }
+} catch (error) {
+  console.error('Firebase initialization error:', error.message);
+  // If Firebase fails to initialize, respond to all requests with an error
+  app.use((req, res, next) => {
+    res.status(500).json({ error: 'Firebase initialization failed. Check server logs.' });
   });
 }
 
@@ -53,7 +64,13 @@ app.get('/api/menu', async (req, res) => {
 // Place a new order
 app.post('/api/orders', async (req, res) => {
   try {
-    const order = req.body;
+    const { items, totalAmount, customerInfo } = req.body;
+
+    // Basic validation
+    if (!items || !totalAmount || !customerInfo) {
+      return res.status(400).json({ error: 'Missing order details. Required fields: items, totalAmount, customerInfo' });
+    }
+
     const ordersRef = db.ref('orders');
     const newOrderRef = ordersRef.push();
     
