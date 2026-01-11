@@ -6,19 +6,35 @@ require('dotenv').config();
 const app = express();
 
 // Initialize Firebase Admin with service account
-const serviceAccount = require('./serviceAccountKey.json');
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
-});
+// Initialize Firebase Admin
+// On Vercel, the service account key is stored as an environment variable.
+// Locally, it will fall back to the JSON file.
+if (process.env.SERVICE_ACCOUNT_KEY) {
+  const serviceAccount = JSON.parse(process.env.SERVICE_ACCOUNT_KEY);
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: process.env.FIREBASE_DATABASE_URL
+  });
+} else {
+  const serviceAccount = require('./serviceAccountKey.json');
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: process.env.FIREBASE_DATABASE_URL || 'https://foodorder-8a5e6-default-rtdb.firebaseio.com'
+  });
+}
 
 const db = admin.database();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Serve static files from the 'eaters' directory
 app.use(express.static('eaters'));
+
+// Add a route for the root path to serve index.html
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/eaters/index.html');
+});
 
 // Routes
 // Get all menu items
@@ -74,7 +90,5 @@ app.get('/api/orders/:orderId', async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Export the app for Vercel
+module.exports = app;
